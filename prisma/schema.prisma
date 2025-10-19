@@ -20,12 +20,12 @@ model User {
 }
 
 model System {
-  id         String   @id @default(cuid())
-  systemId   String   // e.g., "555:342"
-  recRes     Boolean  @default(false)
-  lastUpdate DateTime @default(now())
+  id         String    @id @default(cuid())
+  systemId   String    // e.g., "555:342"
+  recRes     Boolean   @default(false)
+  lastUpdate DateTime? // Nur gesetzt wenn System aktualisiert wurde
   userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   planets    Planet[]
 
   @@unique([userId, systemId])
