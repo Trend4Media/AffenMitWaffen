@@ -37,6 +37,9 @@ app.listen(PORT, async () => {
   console.log(`🚀 Server läuft auf Port ${PORT}`);
   console.log('');
   
+  // Initialisiere Datenbank (erstelle Tabellen)
+  await initDatabase();
+  
   // Stelle sicher, dass ein Admin-Account existiert
   await ensureAdminExists();
 });
