@@ -32,12 +32,13 @@ model System {
 }
 
 model Planet {
-  id        String  @id @default(cuid())
-  planetId  String  // e.g., "555:342:1"
-  important Boolean @default(false)
-  notes     String  @default("")
+  id        String    @id @default(cuid())
+  planetId  String    // e.g., "555:342:1"
+  important Boolean   @default(false)
+  notes     String    @default("")
+  updatedAt DateTime? // Datum der letzten Änderung (nur wenn tatsächlich bearbeitet)
   systemId  String
-  system    System  @relation(fields: [systemId], references: [id], onDelete: Cascade)
+  system    System    @relation(fields: [systemId], references: [id], onDelete: Cascade)
 
   @@unique([systemId, planetId])
 }

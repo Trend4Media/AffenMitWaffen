@@ -143,7 +143,11 @@ router.patch('/:systemId/planets/:planetId', async (req, res) => {
     if (planet) {
       planet = await prisma.planet.update({
         where: { id: planet.id },
-        data: { important, notes }
+        data: { 
+          important, 
+          notes,
+          updatedAt: new Date() // Datum der Aktualisierung
+        }
       });
     } else {
       planet = await prisma.planet.create({
@@ -151,6 +155,7 @@ router.patch('/:systemId/planets/:planetId', async (req, res) => {
           planetId,
           important: important || false,
           notes: notes || '',
+          updatedAt: new Date(), // Datum der ersten Bearbeitung
           systemId: system.id
         }
       });

@@ -382,7 +382,7 @@ function App() {
                 <span className="font-medium">RecRes aktiv</span>
               </label>
               <div className="text-sm text-gray-600">
-                Letztes Update: {systemData.lastUpdate}
+                Letztes Update: {systemData.lastUpdate || 'Noch nicht bearbeitet'}
               </div>
             </div>
           </div>
@@ -507,7 +507,7 @@ function App() {
                       {system.recRes ? 'Ja' : 'Nein'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-gray-600">{system.lastUpdate}</td>
+                  <td className="px-6 py-4 text-gray-600">{system.lastUpdate || '-'}</td>
                   <td className="px-6 py-4">
                     <button
                       onClick={() => setSelectedSystem(system.id.split(':')[1])}
