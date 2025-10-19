@@ -32,6 +32,10 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server läuft auf Port ${PORT}`);
+  console.log('');
+  
+  // Stelle sicher, dass ein Admin-Account existiert
+  await ensureAdminExists();
 });
