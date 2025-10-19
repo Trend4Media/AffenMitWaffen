@@ -84,10 +84,13 @@ class ApiClient {
       method: 'POST',
     });
   }
-}
 
-export default new ApiClient();
-sync activateUser(userId, isActive) {
+  // Admin
+  async getUsers() {
+    return this.request('/admin/users');
+  }
+
+  async activateUser(userId, isActive) {
     return this.request(`/admin/users/${userId}/activate`, {
       method: 'PATCH',
       body: JSON.stringify({ isActive }),
