@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.js';
 import systemRoutes from './routes/systems.js';
 import adminRoutes from './routes/admin.js';
 import { ensureAdminExists } from './utils/init-admin.js';
+import { initDatabase } from './init-db.js';
 
 dotenv.config();
 
