@@ -1,92 +1,174 @@
 import React, { useState, useEffect } from 'react';
-import { Search, LogOut, ChevronLeft } from 'lucide-react';
-
-const CORRECT_PASSWORD = "RecRes555";
+import { Search, LogOut, ChevronLeft, UserPlus } from 'lucide-react';
+import api from './api/client';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registerData, setRegisterData] = useState({ email: '', password: '', name: '' });
+  const [user, setUser] = useState(null);
   const [systems, setSystems] = useState({});
   const [selectedSystem, setSelectedSystem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const systemsPerPage = 20;
 
   useEffect(() => {
-    const loginStatus = sessionStorage.getItem('galaxy555_logged_in');
-    if (loginStatus === 'true') {
+    const token = api.getToken();
+    if (token) {
       setIsLoggedIn(true);
-    }
-
-    const savedData = localStorage.getItem('galaxy555_systems');
-    if (savedData) {
-      setSystems(JSON.parse(savedData));
-    } else {
-      initializeSystems();
+      loadSystems();
     }
   }, []);
 
-  const initializeSystems = () => {
-    const initialSystems = {};
-    for (let i = 111; i <= 999; i++) {
-      initialSystems[i] = {
-        id: `555:${i}`,
-        recRes: false,
-        lastUpdate: new Date().toISOString().split('T')[0],
-        planets: Array.from({ length: 9 }, (_, idx) => ({
-          id: `555:${i}:${idx + 1}`,
-          important: false,
-          notes: ''
-        }))
-      };
+  const loadSystems = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const systemsData = await api.getSystems();
+      
+      if (systemsData.length === 0) {
+        // Systeme initialisieren wenn leer
+        await api.initializeSystems();
+        const newSystemsData = await api.getSystems();
+        convertSystemsToState(newSystemsData);
+      } else {
+        convertSystemsToState(systemsData);
+      }
+    } catch (err) {
+      setError(err.message);
+      if (err.message.includes('Token') || err.message.includes('Ungültig')) {
+        handleLogout();
+      }
+    } finally {
+      setLoading(false);
     }
-    setSystems(initialSystems);
-    localStorage.setItem('galaxy555_systems', JSON.stringify(initialSystems));
   };
 
-  const handleLogin = (e) => {
+  const convertSystemsToState = (systemsData) => {
+    const systemsObj = {};
+    systemsData.forEach(system => {
+      const systemNum = system.systemId.split(':')[1];
+      systemsObj[systemNum] = {
+        id: system.systemId,
+        recRes: system.recRes,
+        lastUpdate: system.lastUpdate.split('T')[0],
+        planets: system.planets.map(planet => ({
+          id: planet.planetId,
+          important: planet.important,
+          notes: planet.notes
+        }))
+      };
+    });
+    
+    // Fehlende Systeme hinzufügen
+    for (let i = 111; i <= 999; i++) {
+      if (!systemsObj[i]) {
+        systemsObj[i] = {
+          id: `555:${i}`,
+          recRes: false,
+          lastUpdate: new Date().toISOString().split('T')[0],
+          planets: Array.from({ length: 9 }, (_, idx) => ({
+            id: `555:${i}:${idx + 1}`,
+            important: false,
+            notes: ''
+          }))
+        };
+      }
+    }
+    
+    setSystems(systemsObj);
+  };
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (password === CORRECT_PASSWORD) {
+    setError('');
+    setLoading(true);
+    try {
+      const data = await api.login(loginEmail, loginPassword);
+      setUser(data.user);
       setIsLoggedIn(true);
-      sessionStorage.setItem('galaxy555_logged_in', 'true');
-      setPassword('');
-    } else {
-      alert('Falsches Passwort!');
+      setLoginEmail('');
+      setLoginPassword('');
+      await loadSystems();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const data = await api.register(registerData.email, registerData.password, registerData.name);
+      setUser(data.user);
+      setIsLoggedIn(true);
+      setRegisterData({ email: '', password: '', name: '' });
+      setIsRegistering(false);
+      await loadSystems();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleLogout = () => {
+    api.logout();
     setIsLoggedIn(false);
-    sessionStorage.removeItem('galaxy555_logged_in');
+    setUser(null);
+    setSystems({});
     setSelectedSystem(null);
   };
 
-  const updateSystem = (systemNum, updates) => {
-    const updatedSystems = {
-      ...systems,
-      [systemNum]: {
-        ...systems[systemNum],
-        ...updates,
-        lastUpdate: new Date().toISOString().split('T')[0]
-      }
-    };
-    setSystems(updatedSystems);
-    localStorage.setItem('galaxy555_systems', JSON.stringify(updatedSystems));
+  const updateSystem = async (systemNum, updates) => {
+    try {
+      const systemId = `555:${systemNum}`;
+      await api.updateSystem(systemId, updates);
+      
+      // Lokalen State aktualisieren
+      const updatedSystems = {
+        ...systems,
+        [systemNum]: {
+          ...systems[systemNum],
+          ...updates,
+          lastUpdate: new Date().toISOString().split('T')[0]
+        }
+      };
+      setSystems(updatedSystems);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
-  const updatePlanet = (systemNum, planetIdx, updates) => {
-    const updatedSystems = {
-      ...systems,
-      [systemNum]: {
-        ...systems[systemNum],
-        planets: systems[systemNum].planets.map((planet, idx) =>
-          idx === planetIdx ? { ...planet, ...updates } : planet
-        ),
-        lastUpdate: new Date().toISOString().split('T')[0]
-      }
-    };
-    setSystems(updatedSystems);
-    localStorage.setItem('galaxy555_systems', JSON.stringify(updatedSystems));
+  const updatePlanet = async (systemNum, planetIdx, updates) => {
+    try {
+      const systemId = `555:${systemNum}`;
+      const planetId = `555:${systemNum}:${planetIdx + 1}`;
+      await api.updatePlanet(systemId, planetId, updates);
+      
+      // Lokalen State aktualisieren
+      const updatedSystems = {
+        ...systems,
+        [systemNum]: {
+          ...systems[systemNum],
+          planets: systems[systemNum].planets.map((planet, idx) =>
+            idx === planetIdx ? { ...planet, ...updates } : planet
+          ),
+          lastUpdate: new Date().toISOString().split('T')[0]
+        }
+      };
+      setSystems(updatedSystems);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const filteredSystems = Object.values(systems).filter(system =>
@@ -106,26 +188,128 @@ function App() {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">🪐 Galaxy 555</h1>
             <h2 className="text-xl text-gray-600">System Tracker</h2>
           </div>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Passwort
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Passwort eingeben"
-              />
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
             </div>
-            <button
-              type="submit"
-              className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium"
-            >
-              Anmelden
-            </button>
-          </form>
+          )}
+
+          {!isRegistering ? (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="email@beispiel.de"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Passwort
+                </label>
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Passwort eingeben"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50"
+              >
+                {loading ? 'Laden...' : 'Anmelden'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRegistering(true)}
+                className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                <UserPlus size={20} />
+                Registrieren
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={registerData.name}
+                  onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Dein Name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={registerData.email}
+                  onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="email@beispiel.de"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Passwort
+                </label>
+                <input
+                  type="password"
+                  value={registerData.password}
+                  onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Passwort wählen"
+                  required
+                  minLength={6}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50"
+              >
+                {loading ? 'Laden...' : 'Account erstellen'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegistering(false);
+                  setError('');
+                }}
+                className="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Zurück zum Login
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (loading && Object.keys(systems).length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">🪐</div>
+          <div className="text-xl text-gray-600">Lade Systeme...</div>
         </div>
       </div>
     );
@@ -157,6 +341,14 @@ function App() {
           </div>
         </div>
 
+        {error && (
+          <div className="max-w-7xl mx-auto mt-6 px-6">
+            <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          </div>
+        )}
+
         <div className="max-w-7xl mx-auto p-6">
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">System-Status</h2>
@@ -186,7 +378,7 @@ function App() {
                       <input
                         type="checkbox"
                         checked={planet.important}
-                        onChange={(e) => updatePlanet(selectedSystem, idx, { important: e.target.checked })}
+                        onChange={(e) => updatePlanet(selectedSystem, idx, { important: e.target.checked, notes: planet.notes })}
                         className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
                       />
                       <span className="font-medium">{planet.id}</span>
@@ -195,7 +387,7 @@ function App() {
                     <input
                       type="text"
                       value={planet.notes}
-                      onChange={(e) => updatePlanet(selectedSystem, idx, { notes: e.target.value })}
+                      onChange={(e) => updatePlanet(selectedSystem, idx, { important: planet.important, notes: e.target.value })}
                       placeholder="Notizen / Link..."
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
@@ -213,7 +405,10 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 shadow-lg">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-bold">🪐 Galaxy 555 System Tracker</h1>
+          <div>
+            <h1 className="text-2xl font-bold">🪐 Galaxy 555 System Tracker</h1>
+            {user && <p className="text-sm opacity-90">Hallo, {user.name || user.email}!</p>}
+          </div>
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
@@ -223,6 +418,14 @@ function App() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="max-w-7xl mx-auto mt-6 px-6">
+          <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto p-6">
         <div className="mb-6 flex items-center gap-4">
