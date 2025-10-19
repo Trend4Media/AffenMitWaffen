@@ -52,7 +52,7 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ email, password, name }),
     });
-    this.setToken(data.token);
+    // Kein Token mehr bei Registrierung (Account muss freigeschaltet werden)
     return data;
   }
 
@@ -82,6 +82,28 @@ class ApiClient {
   async initializeSystems() {
     return this.request('/systems/initialize', {
       method: 'POST',
+    });
+  }
+}
+
+export default new ApiClient();
+sync activateUser(userId, isActive) {
+    return this.request(`/admin/users/${userId}/activate`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    });
+  }
+
+  async setUserAdmin(userId, isAdmin) {
+    return this.request(`/admin/users/${userId}/admin`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isAdmin }),
+    });
+  }
+
+  async deleteUser(userId) {
+    return this.request(`/admin/users/${userId}`, {
+      method: 'DELETE',
     });
   }
 }

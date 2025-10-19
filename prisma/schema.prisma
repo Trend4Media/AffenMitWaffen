@@ -12,6 +12,8 @@ model User {
   email     String   @unique
   password  String
   name      String?
+  isActive  Boolean  @default(false)  // Muss vom Admin freigeschaltet werden
+  isAdmin   Boolean  @default(false)  // Admin kann andere User freischalten
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   systems   System[]

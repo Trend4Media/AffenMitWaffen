@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import systemRoutes from './routes/systems.js';
+import adminRoutes from './routes/admin.js';
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.get('/api/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/systems', systemRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

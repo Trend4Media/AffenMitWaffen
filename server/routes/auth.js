@@ -23,24 +23,24 @@ router.post('/register', async (req, res) => {
     // Passwort hashen
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // User erstellen
+    // User erstellen (standardmäßig inaktiv, muss vom Admin freigeschaltet werden)
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
-        name
+        name,
+        isActive: false,  // Standardmäßig inaktiv
+        isAdmin: false
       }
     });
 
-    // Token generieren
-    const token = generateToken(user.id);
-
     res.json({
-      token,
+      message: 'Registrierung erfolgreich! Dein Account muss noch von einem Administrator freigeschaltet werden.',
       user: {
         id: user.id,
         email: user.email,
-        name: user.name
+        name: user.name,
+        isActive: user.isActive
       }
     });
   } catch (error) {
@@ -70,6 +70,11 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Ungültige Anmeldedaten' });
     }
 
+    // Prüfen ob Account freigeschaltet ist
+    if (!user.isActive) {
+      return res.status(403).json({ error: 'Dein Account wurde noch nicht freigeschaltet. Bitte warte auf die Freigabe durch einen Administrator.' });
+    }
+
     // Token generieren
     const token = generateToken(user.id);
 
@@ -78,7 +83,8 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name
+        name: user.name,
+        isAdmin: user.isAdmin
       }
     });
   } catch (error) {

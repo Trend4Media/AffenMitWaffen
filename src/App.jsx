@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, LogOut, ChevronLeft, UserPlus } from 'lucide-react';
+import { Search, LogOut, ChevronLeft, UserPlus, Shield } from 'lucide-react';
 import api from './api/client';
+import AdminPanel from './AdminPanel';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -15,6 +16,8 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const systemsPerPage = 20;
 
   useEffect(() => {
@@ -108,11 +111,10 @@ function App() {
     setLoading(true);
     try {
       const data = await api.register(registerData.email, registerData.password, registerData.name);
-      setUser(data.user);
-      setIsLoggedIn(true);
       setRegisterData({ email: '', password: '', name: '' });
       setIsRegistering(false);
-      await loadSystems();
+      setRegistrationSuccess(true);
+      // Kein Auto-Login mehr, da Account freigeschaltet werden muss
     } catch (err) {
       setError(err.message);
     } finally {
@@ -180,6 +182,10 @@ function App() {
   const currentSystems = filteredSystems.slice(indexOfFirstSystem, indexOfLastSystem);
   const totalPages = Math.ceil(filteredSystems.length / systemsPerPage);
 
+  if (showAdminPanel && user?.isAdmin) {
+    return <AdminPanel onBack={() => setShowAdminPanel(false)} />;
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center p-4">
@@ -188,6 +194,19 @@ function App() {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">🪐 Galaxy 555</h1>
             <h2 className="text-xl text-gray-600">System Tracker</h2>
           </div>
+
+          {registrationSuccess && (
+            <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-800 rounded">
+              <p className="font-bold">✅ Registrierung erfolgreich!</p>
+              <p className="text-sm mt-1">Dein Account muss noch von einem Administrator freigeschaltet werden. Du erhältst eine Benachrichtigung, sobald du dich einloggen kannst.</p>
+              <button
+                onClick={() => setRegistrationSuccess(false)}
+                className="mt-2 text-sm underline"
+              >
+                Verstanden
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -409,13 +428,24 @@ function App() {
             <h1 className="text-2xl font-bold">🪐 Galaxy 555 System Tracker</h1>
             {user && <p className="text-sm opacity-90">Hallo, {user.name || user.email}!</p>}
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
-          >
-            <LogOut size={20} />
-            Logout
-          </button>
+          <div className="flex items-center gap-2">
+            {user?.isAdmin && (
+              <button
+                onClick={() => setShowAdminPanel(true)}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
+              >
+                <Shield size={20} />
+                Admin
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
+            >
+              <LogOut size={20} />
+              Logout
+            </button>
+          </div>
         </div>
       </div>
 
